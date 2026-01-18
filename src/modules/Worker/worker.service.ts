@@ -17,9 +17,9 @@ export class WorkerService {
     private readonly puppeteerService: PuppeteerService,
     private readonly chatbotService: ChatbotService,
   ) {
-    setTimeout(() => {
-      this.run();
-    }, 1000)
+    // setTimeout(() => {
+    //   this.run();
+    // }, 1000)
 
     // const rs = getAbsolutePathByFileName('quat_mini')
     // console.log({rs})

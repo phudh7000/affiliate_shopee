@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from "path";
 import * as dayjs from "dayjs";
+import * as XLSX from 'xlsx'
 
 export function log(...args) {
   const now = dayjs();
@@ -31,3 +32,17 @@ export function toSnakeCase(str: string) {
     .replace(/[^a-z0-9]+/g, "_")            // chuyển khoảng trắng và ký tự đặc biệt thành _
     .replace(/^_+|_+$/g, "");               // xoá _ thừa
 }
+
+  export function convertToXlsx(data: {[k in string]: any}[], filePath: string) {
+        // 1. Chuyển dữ liệu sang worksheet
+        const worksheet = XLSX.utils.json_to_sheet(data);
+
+        // 2. Tạo workbook và thêm worksheet
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+
+        //35. Ghi ra file Excel
+        XLSX.writeFile(workbook, filePath);
+
+        console.log(`✅ Xuất file ${filePath} thành công`);
+    }

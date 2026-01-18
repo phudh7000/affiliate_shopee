@@ -8,9 +8,9 @@ export class GoogleSheetsService {
   private client;
   private sheets;
 
-  constructor() {
-    this.init();
-  }
+  // constructor() {
+  //   this.init();
+  // }
 
   async init() {
     // console.log(__dirname, '..', 'credentials.json')
