@@ -23,6 +23,10 @@ export class SourceAffiliateLink {
     @Prop({ type: String, alias: 'Liên kết gốc' })
     source_link: string;
 
+    @IsInt()
+    @Prop({ type: String })
+    my_new_link?: string; // Link để rải lên mxh
+
     @IsString()
     @Prop()
     Sub_id1?: string;
