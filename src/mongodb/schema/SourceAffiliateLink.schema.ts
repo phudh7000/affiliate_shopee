@@ -27,17 +27,24 @@ export class SourceAffiliateLink {
     @Prop({ required: true, unique: true })
     PostID: string;
 
+    @Prop({ type: String })
+    video_id?: string;
+
     @IsString()
     @Prop()
     SourceUrl: string;
 
-    @IsInt()
+    @IsString()
     @Prop({ type: String, alias: 'Liên kết gốc' })
     source_link: string;
 
-    @IsInt()
+    @IsString()
     @Prop({ type: String })
     my_new_link?: string; // Link để rải lên mxh
+
+    @IsString()
+    @Prop({ type: String })
+    url_link?: string;
 
     @IsString()
     @Prop()
@@ -58,6 +65,9 @@ export class SourceAffiliateLink {
     @IsString()
     @Prop()
     Sub_id5?: string;
+    
+    @Prop({ type: Boolean })
+    status: boolean;
 
     @Prop()
     createdAt?: Date

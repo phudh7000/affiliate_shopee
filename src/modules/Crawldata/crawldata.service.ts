@@ -78,7 +78,7 @@ export class CrawldataService {
                 Sub_id3: '',
                 Sub_id4: '',
                 Sub_id5: '',
-
+                status: false
             })
         }
 
