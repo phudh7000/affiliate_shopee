@@ -28,7 +28,7 @@ import { CrawldataModule } from './modules/Crawldata/crawldata.module';
     // ProductModule,
     // ChatbotModule,
     CrawldataModule,
-    // WorkerrModule,
+    WorkerrModule,
   ],
   controllers: [AppController],
   providers: [AppService],

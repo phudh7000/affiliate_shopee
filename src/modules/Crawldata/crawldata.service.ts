@@ -3,7 +3,7 @@ import { GoogleSheetsService } from '../Google/google-sheets.service';
 import { PuppeteerService } from '../Puppeteer/puppeteer.service';
 import { ElementHandle, Page } from 'puppeteer-core';
 import { IFanpage, IGroup, IProduct } from 'src/type';
-import { convertToXlsx, getAbsolutePathByFileName, log, toSnakeCase } from 'src/utils';
+import { convertToXlsx, getAbsolutePathByFileName, log, searchFilesInFolder, toSnakeCase } from 'src/utils';
 import { ChatbotService } from '../Chatbot/chatbot.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -11,6 +11,7 @@ import { Post } from 'src/mongodb/schema/Post.schema';
 import { SourceAffiliateLink } from 'src/mongodb/schema/SourceAffiliateLink.schema';
 import * as fs from 'fs';
 import * as csv from 'csv-parser';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CrawldataService {
@@ -19,6 +20,7 @@ export class CrawldataService {
     private products: IProduct[] = [];
 
     constructor(
+        private readonly configService: ConfigService,
         private readonly googleSheetsService: GoogleSheetsService,
         private readonly puppeteerService: PuppeteerService,
         private readonly chatbotService: ChatbotService,
@@ -33,6 +35,15 @@ export class CrawldataService {
         // setTimeout(() => {
         //     this.saveNewLink();
         // }, 1000)
+
+        // setTimeout(() => {
+        //     this.updateProductNameByNewLink();
+        // }, 1000)
+
+        // setTimeout(() => {
+        //     this.updateMediaPath();
+        // }, 1000)
+
     }
 
     async run() {
@@ -59,6 +70,7 @@ export class CrawldataService {
 
             sourceAffiliateLinkArray.push({
                 PostID: post.PostID,
+                Author: post.Author,
                 SourceUrl: post.Url,
                 source_link: shopeeLink,
                 Sub_id1: toSnakeCase(author).replaceAll('_', ''),
@@ -89,8 +101,21 @@ export class CrawldataService {
         }
     }
 
+    async exportAffiliateWithoutNewlinkToXlsxFile() { // Hàm này lấy danh sách affiliate item chưa có my_new_link
 
-    async saveNewLink() {
+        // const data = sourceAffiliateLinkArray.map(u => ({
+        //         "Liên kết gốc": u.source_link,
+        //         Sub_id1: u.Sub_id1,
+        //         Sub_id2: u.Sub_id2,
+        //         Sub_id3: u.Sub_id3,
+        //         Sub_id4: u.Sub_id4,
+        //         Sub_id5: u.Sub_id5,
+        //     }))
+        //     convertToXlsx(data, 'source_affiliate_link.xlsx');
+    }
+
+
+    async saveNewLink() { // Hàm này cập nhật link affiliate mới từ file dựa theo link cũ
         fs.createReadStream("AffiliateBatchCustomLinks.csv")
             .pipe(csv({
                 mapHeaders: ({ header }) =>
@@ -114,6 +139,79 @@ export class CrawldataService {
                     console.error(e);
                 }
             });
+    }
+
+
+    async updateProductNameByNewLink() { // Hàm này để update tên sản phẩm
+        const withoutNameList = await this.sourceAffiliateLinkModel.find({ ProductName: null }).limit(100);
+        console.log(withoutNameList)
+        if (withoutNameList.length == 0) {
+            return;
+        }
+
+        const browser = await this.puppeteerService.openChrome();
+        const pages = await browser.pages();
+        const page = pages[0];
+        for (const item of withoutNameList) {
+            if (item.my_new_link) {
+                await page.goto(item.source_link);
+
+                await page.waitForSelector('div.container[role="main"] section section h1');
+
+                const title = await page.$eval(
+                    'div.container[role="main"] section section h1',
+                    el => el.textContent.trim()
+                );
+
+                console.log("title:", title);
+                if (title) {
+                    try {
+                        item.ProductName = title;
+                        console.log(item.my_new_link, ' --> ', title);
+                        await item.save();
+                    } catch (error) {
+                        console.error('Faild to fetch product name: ', item.my_new_link, error)
+                    }
+                    await this.sleep(4000);
+                }
+            }
+        }
+    }
+
+
+    async updateMediaPath() { // Hàm này cập nhật đường dẫn media local cho sản phẩm
+        const affiliate_list = await this.sourceAffiliateLinkModel.find({ MediaPath: null }).limit(100);
+        if (affiliate_list.length == 0) {
+            return;
+        }
+
+        const MEDIA_FOLDER_PATH = this.configService.get('MEDIA_FOLDER_PATH');
+
+        for (const item of affiliate_list) {
+            if (!item.SourceUrl) {
+                console.error(`[SourceUrl not found] Không thể lấy media cho ${item.SourceUrl} - ${item.ProductName}`)
+                continue;
+            }
+            const url = item.SourceUrl;
+            // const id = url.match(/\d+/)[0];
+            const match = url.match(/reel\/(\d+)/);
+            const id = match ? match[1] : null;
+
+            if (!id) {
+                console.error(`[ID not found] Không thể lấy media cho ${item.SourceUrl} - ${item.ProductName}`)
+                continue;
+            }
+
+            const folderPath = MEDIA_FOLDER_PATH + item.Author;
+            const mediaPath = searchFilesInFolder(folderPath, id)
+            if (mediaPath) {
+                item.MediaPath = mediaPath;
+                await item.save()
+                console.log({mediaPath})
+            } else {
+                console.log(`[File not found] Không thể lấy media cho ${item.SourceUrl} - ${item.ProductName}`)
+            }
+        }
     }
 
 

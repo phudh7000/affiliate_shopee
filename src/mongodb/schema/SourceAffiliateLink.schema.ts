@@ -12,6 +12,18 @@ export type SourceAffiliateLinkDocument = HydratedDocument<SourceAffiliateLink>;
 })
 export class SourceAffiliateLink {
     @IsString()
+    @Prop()
+    ProductName?: string;
+
+    @IsString()
+    @Prop()
+    MediaPath?: string;
+
+    @IsString()
+    @Prop({ required: true })
+    Author: string;
+
+    @IsString()
     @Prop({ required: true, unique: true })
     PostID: string;
 

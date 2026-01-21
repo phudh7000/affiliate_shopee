@@ -8,6 +8,11 @@ export function log(...args) {
   console.log(`${now.format('YYYY/MM/DD HH:mm:ss')}:`, ...args)
 }
 
+export async function sleep(ms: number) {
+  log(`==== Waiting ${Math.round(ms / 1000)}s ====`);
+  return new Promise(rs => setTimeout(rs, ms));
+}
+
 
 export function getAbsolutePathByFileName(fileName: string, folder = './media') {
   const files = fs.readdirSync(folder);
@@ -59,15 +64,16 @@ export function searchFilesInFolder(folderPath: string, keyword: string) {
     return;
   }
 
-  const files = fs.readdirSync(folderPath, { withFileTypes: true });
+  let files = fs.readdirSync(folderPath, { withFileTypes: true });
+  files = files.filter(item => item.isFile()); // chỉ lấy file
 
-  files
-    .filter(item => item.isFile()) // chỉ lấy file
-    .filter(item => item.name.includes(keyword)) // tên file chứa keyword
-    .forEach(item => {
-      const fullPath = path.join(folderPath, item.name);
-      console.log(fullPath);
-    });
+  for (const item of files) {
+    if (item.name.includes(keyword)) { // tên file chứa keyword
+      return path.join(folderPath, item.name);
+    }
+  }
+
+  return null;
 }
 
 // ===== CÁCH DÙNG =====

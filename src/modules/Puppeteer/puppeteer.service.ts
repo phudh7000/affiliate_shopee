@@ -1,6 +1,15 @@
 import { BeforeApplicationShutdown, Injectable } from '@nestjs/common';
 import * as puppeteer from 'puppeteer-core';
+
 import { Browser } from 'puppeteer-core';
+// import puppeteer from'puppeteer-extra';
+// // @ts-ignore
+// // import * as StealthPlugin from 'puppeteer-extra-plugin-stealth'
+// // const puppeteer = require('puppeteer-extra')
+// const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+
+// puppeteer.use(StealthPlugin())
+
 
 @Injectable()
 export class PuppeteerService implements BeforeApplicationShutdown {
