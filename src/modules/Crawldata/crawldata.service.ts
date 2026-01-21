@@ -9,6 +9,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Post } from 'src/mongodb/schema/Post.schema';
 import { SourceAffiliateLink } from 'src/mongodb/schema/SourceAffiliateLink.schema';
+import * as fs from 'fs';
+import * as csv from 'csv-parser';
 
 @Injectable()
 export class CrawldataService {
@@ -28,8 +30,9 @@ export class CrawldataService {
         //     this.run();
         // }, 1000)
 
-        // const rs = getAbsolutePathByFileName('quat_mini')
-        // console.log({rs})
+        // setTimeout(() => {
+        //     this.saveNewLink();
+        // }, 1000)
     }
 
     async run() {
@@ -49,7 +52,7 @@ export class CrawldataService {
             const shopeeRegex = /https:\/\/s\.shopee\.vn\/\S+/g;
             const shopeeLink = shopComment?.match(shopeeRegex)?.[0] || null;
 
-            if(shopeeLink == null) {
+            if (shopeeLink == null) {
                 console.log('Không thể lấy aff link từ comments: ', post.Url)
                 continue;
             }
@@ -58,16 +61,16 @@ export class CrawldataService {
                 PostID: post.PostID,
                 SourceUrl: post.Url,
                 source_link: shopeeLink,
-                Sub_id1: toSnakeCase(author).replaceAll('_',''),
+                Sub_id1: toSnakeCase(author).replaceAll('_', ''),
                 Sub_id2: '',
                 Sub_id3: '',
                 Sub_id4: '',
                 Sub_id5: '',
-
+                status: false
             })
         }
 
-        try {       
+        try {
             const done = await this.sourceAffiliateLinkModel.insertMany(sourceAffiliateLinkArray);
             console.log('Đã thêm thành công: ', done.length)
 
@@ -86,7 +89,34 @@ export class CrawldataService {
         }
     }
 
-  
+
+    async saveNewLink() {
+        fs.createReadStream("AffiliateBatchCustomLinks.csv")
+            .pipe(csv({
+                mapHeaders: ({ header }) =>
+                    header
+                        .replace(/^\uFEFF/, '')
+                        .trim()
+                        .normalize("NFC")
+            }))
+            .on("data", async (row) => {
+                try {
+                    console.log(`'Liên kết gốc: ${row['Liên kết gốc']} --> Liên kết chuyển đổi: ${row['Liên kết chuyển đổi']}`)
+                    // console.log(row['\ufeffLiên kết gốc'])
+                    if (row['Liên kết gốc'] && row['Liên kết chuyển đổi']) {
+                        await this.sourceAffiliateLinkModel.updateOne({
+                            source_link: row['Liên kết gốc']
+                        }, {
+                            my_new_link: row['Liên kết chuyển đổi']
+                        });
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            });
+    }
+
+
 
     async sleep(ms: number) {
         log(`==== Waiting ${Math.round(ms / 1000)}s ====`);

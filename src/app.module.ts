@@ -7,6 +7,7 @@ import { ProductModule } from './modules/Product/product.module';
 import { ChatbotModule } from './modules/Chatbot/chatbot.module';
 import { WorkerrModule } from './modules/Worker/worker.module';
 import { CrawldataModule } from './modules/Crawldata/crawldata.module';
+import { PostModule } from './modules/Post/post.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { CrawldataModule } from './modules/Crawldata/crawldata.module';
     // ProductModule,
     // ChatbotModule,
     CrawldataModule,
+    PostModule,
     // WorkerrModule,
   ],
   controllers: [AppController],

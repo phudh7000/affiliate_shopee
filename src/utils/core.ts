@@ -33,16 +33,43 @@ export function toSnakeCase(str: string) {
     .replace(/^_+|_+$/g, "");               // xoá _ thừa
 }
 
-  export function convertToXlsx(data: {[k in string]: any}[], filePath: string) {
-        // 1. Chuyển dữ liệu sang worksheet
-        const worksheet = XLSX.utils.json_to_sheet(data);
+export function convertToXlsx(data: { [k in string]: any }[], filePath: string) {
+  // 1. Chuyển dữ liệu sang worksheet
+  const worksheet = XLSX.utils.json_to_sheet(data);
 
-        // 2. Tạo workbook và thêm worksheet
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+  // 2. Tạo workbook và thêm worksheet
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
 
-        //35. Ghi ra file Excel
-        XLSX.writeFile(workbook, filePath);
+  //35. Ghi ra file Excel
+  XLSX.writeFile(workbook, filePath);
 
-        console.log(`✅ Xuất file ${filePath} thành công`);
-    }
+  console.log(`✅ Xuất file ${filePath} thành công`);
+}
+
+
+/**
+* Tìm file trong 1 folder (1 tầng)
+* @param {string} folderPath - đường dẫn folder
+* @param {string} keyword - từ khóa trong tên file
+*/
+export function searchFilesInFolder(folderPath: string, keyword: string) {
+  if (!fs.existsSync(folderPath)) {
+    console.error("Folder không tồn tại:", folderPath);
+    return;
+  }
+
+  const files = fs.readdirSync(folderPath, { withFileTypes: true });
+
+  files
+    .filter(item => item.isFile()) // chỉ lấy file
+    .filter(item => item.name.includes(keyword)) // tên file chứa keyword
+    .forEach(item => {
+      const fullPath = path.join(folderPath, item.name);
+      console.log(fullPath);
+    });
+}
+
+// ===== CÁCH DÙNG =====
+const folderPath = "/Users/yourname/Documents/data"; // folder truyền vào
+const keyword = "report"; // cụm từ cần tìm
