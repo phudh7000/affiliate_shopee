@@ -5,9 +5,10 @@ import { ElementHandle, Page } from 'puppeteer-core';
 import { IFanpage, IGroup, IProduct } from 'src/type';
 import { convertToXlsx, getAbsolutePathByFileName, log, searchFilesInFolder, toSnakeCase } from 'src/utils';
 import { ChatbotService } from '../Chatbot/chatbot.service';
+import { DriveService } from '../Drive/drive.service';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { Post } from 'src/mongodb/schema/Post.schema';
+import { Model } from 'mongoose';
 import { SourceAffiliateLink } from 'src/mongodb/schema/SourceAffiliateLink.schema';
 import * as fs from 'fs';
 import * as csv from 'csv-parser';
@@ -22,6 +23,7 @@ export class CrawldataService {
     constructor(
         private readonly configService: ConfigService,
         private readonly googleSheetsService: GoogleSheetsService,
+        private readonly driveService: DriveService,
         private readonly puppeteerService: PuppeteerService,
         private readonly chatbotService: ChatbotService,
 
@@ -206,8 +208,13 @@ export class CrawldataService {
             const mediaPath = searchFilesInFolder(folderPath, id)
             if (mediaPath) {
                 item.MediaPath = mediaPath;
-                await item.save()
-                console.log({mediaPath})
+
+                const file_info = await this.driveService.uploadFile(mediaPath, "1xElKN_uhzxFBlkeFOGPv_Gw7cZwfoKf_");
+                console.log("file_info: ", file_info);
+                const { id, name } = file_info;
+                item.url_link = `https://drive.google.com/uc?id=${id}&export=download`;
+                await item.save();
+                console.log({ mediaPath })
             } else {
                 console.log(`[File not found] Không thể lấy media cho ${item.SourceUrl} - ${item.ProductName}`)
             }

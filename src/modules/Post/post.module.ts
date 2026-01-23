@@ -4,10 +4,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Post, PostSchema } from 'src/mongodb/schema/Post.schema';
 import { PostService } from './post.service';
 import { SourceAffiliateLink, SourceAffiliateLinkSchema } from 'src/mongodb/schema/SourceAffiliateLink.schema';
+import { Page, PageSchema } from 'src/mongodb/schema/Page.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Post.name, schema: PostSchema }, { name: SourceAffiliateLink.name, schema: SourceAffiliateLinkSchema }]),
+    MongooseModule.forFeature([{ name: Post.name, schema: PostSchema }, { name: Page.name, schema: PageSchema }, { name: SourceAffiliateLink.name, schema: SourceAffiliateLinkSchema }]),
   ],
   providers: [PostService],
   exports: [PostService]

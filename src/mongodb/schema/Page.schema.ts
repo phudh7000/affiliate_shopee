@@ -22,19 +22,25 @@ export class Page {
     @Prop()
     url_page: string;
 
-    @IsString()
-    @Prop()
-    media: string;
+    @Prop({ type: [String], require: false })
+    media?: string[];
 
     @Prop({ type: [String], require: false })
-    Types?: string[];
+    types?: string[];
+    
+    @Prop({ type: [String], require: false })
+    dependent?: string[];
 
     @IsString()
     @Prop()
     access_token: string;
 
-    @Prop({ type: Boolean })
+    @Prop({ type: Boolean, default: true })
     status: boolean;
+
+    @IsDate()
+    @Prop({ type: Date })
+    postedAt?: Date
 
     @Prop()
     createdAt?: Date

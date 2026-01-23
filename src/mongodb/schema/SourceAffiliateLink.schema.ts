@@ -1,7 +1,7 @@
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { IsString, IsInt } from 'class-validator';
+import { IsString, IsInt, IsDate } from 'class-validator';
 
 export type SourceAffiliateLinkDocument = HydratedDocument<SourceAffiliateLink>;
 
@@ -68,6 +68,10 @@ export class SourceAffiliateLink {
     
     @Prop({ type: Boolean })
     status: boolean;
+
+    @IsDate()
+    @Prop({ type: Date })
+    postedAt?: Date
 
     @Prop()
     createdAt?: Date
