@@ -31,24 +31,99 @@ export class CrawldataService {
         @InjectModel(SourceAffiliateLink.name) private sourceAffiliateLinkModel: Model<SourceAffiliateLink>,
     ) {
         // setTimeout(() => {
-        //     this.run();
+        //     this.crawlAffiliateLinkFromContent();
         // }, 1000)
 
         // setTimeout(() => {
         //     this.saveNewLink();
         // }, 1000)
 
+        // Bước này chạy sau độc lập
         // setTimeout(() => {
         //     this.updateProductNameByNewLink();
         // }, 1000)
 
         // setTimeout(() => {
-        //     this.updateMediaPath();
+        //     this.updateMediaToDrive();
         // }, 1000)
 
     }
 
-    async run() {
+    async crawlAffiliateLinkFromContent() {
+        const posts = await this.postModel.find().lean();
+
+        const sourceAffiliateLinkArray: SourceAffiliateLink[] = [];
+        for (const post of posts) {
+            const author = post.Author;
+            const content = post.Content;
+
+            // 1. Lấy link Shopee
+            const shopeeRegex = /https:\/\/s\.shopee\.vn\/\S+/g;
+            const shopeeLink = content?.match(shopeeRegex)?.[0] || null;
+
+            if (shopeeLink == null) {
+                console.log('Không thể lấy aff link từ content: ', post.Url)
+                continue;
+            }
+
+             const url = post.Url;
+            // const id = url.match(/\d+/)[0];
+            const match = url.match(/reel\/(\d+)/);
+            const id = match ? match[1] : null;
+
+            if (!id) {
+                console.error(`[ID not found] Không thể lấy reels video cho ${post.Url}`)
+                continue;
+            }
+
+            const MEDIA_FOLDER_PATH = this.configService.get('MEDIA_FOLDER_PATH');
+            const folderPath = MEDIA_FOLDER_PATH + post.Author;
+            const mediaPath = searchFilesInFolder(folderPath, id)
+            if (!mediaPath) {
+                console.error(`[video not available] Không tìm thấy video cho ${post.Url}`)
+                continue;
+            }
+
+            sourceAffiliateLinkArray.push({
+                PostID: post.PostID,
+                Author: post.Author,
+                SourceUrl: post.Url,
+                source_link: shopeeLink,
+                Sub_id1: toSnakeCase(author).replaceAll('_', ''),
+                Sub_id2: '',
+                Sub_id3: '',
+                Sub_id4: '',
+                Sub_id5: '',
+                MediaPath: mediaPath,
+                status: false
+            })
+        }
+
+        // console.log(sourceAffiliateLinkArray)
+
+        // return
+        try {
+            const done = await this.sourceAffiliateLinkModel.insertMany(sourceAffiliateLinkArray);
+            console.log('Đã thêm thành công: ', done.length)
+
+            const data = sourceAffiliateLinkArray.map(u => ({
+                "Liên kết gốc": u.source_link,
+                Sub_id1: u.Sub_id1,
+                Sub_id2: u.Sub_id2,
+                Sub_id3: u.Sub_id3,
+                Sub_id4: u.Sub_id4,
+                Sub_id5: u.Sub_id5,
+            }))
+
+            convertToXlsx(data, 'source_affiliate_link.xlsx');
+        } catch (error) {
+            console.error(error)
+        }
+        console.log('Done.')
+    }
+
+
+    async crawlAffiliateLinkFromComment() {
         const posts = await this.postModel.find().lean();
 
         const sourceAffiliateLinkArray: SourceAffiliateLink[] = [];
@@ -70,6 +145,24 @@ export class CrawldataService {
                 continue;
             }
 
+            const url = post.Url;
+            // const id = url.match(/\d+/)[0];
+            const match = url.match(/reel\/(\d+)/);
+            const id = match ? match[1] : null;
+
+            if (!id) {
+                console.error(`[ID not found] Không thể lấy reels video cho ${post.Url}`)
+                continue;
+            }
+
+            const MEDIA_FOLDER_PATH = this.configService.get('MEDIA_FOLDER_PATH');
+            const folderPath = MEDIA_FOLDER_PATH + post.Author;
+            const mediaPath = searchFilesInFolder(folderPath, id)
+            if (!mediaPath) {
+                console.error(`[video not available] Không tìm thấy video cho ${post.Url}`)
+                continue;
+            }
+
             sourceAffiliateLinkArray.push({
                 PostID: post.PostID,
                 Author: post.Author,
@@ -80,6 +173,7 @@ export class CrawldataService {
                 Sub_id3: '',
                 Sub_id4: '',
                 Sub_id5: '',
+                MediaPath: mediaPath,
                 status: false
             })
         }
@@ -101,6 +195,8 @@ export class CrawldataService {
         } catch (error) {
             console.error(error)
         }
+
+        console.log('Done.')
     }
 
     async exportAffiliateWithoutNewlinkToXlsxFile() { // Hàm này lấy danh sách affiliate item chưa có my_new_link
@@ -132,7 +228,8 @@ export class CrawldataService {
                     // console.log(row['\ufeffLiên kết gốc'])
                     if (row['Liên kết gốc'] && row['Liên kết chuyển đổi']) {
                         await this.sourceAffiliateLinkModel.updateOne({
-                            source_link: row['Liên kết gốc']
+                            source_link: row['Liên kết gốc'],
+                            my_new_link: null,
                         }, {
                             my_new_link: row['Liên kết chuyển đổi']
                         });
@@ -140,12 +237,18 @@ export class CrawldataService {
                 } catch (e) {
                     console.error(e);
                 }
-            });
+            }).on('close', () => {
+                console.log('Done.')
+            })
     }
 
 
     async updateProductNameByNewLink() { // Hàm này để update tên sản phẩm
-        const withoutNameList = await this.sourceAffiliateLinkModel.find({ ProductName: null }).limit(100);
+        const withoutNameList = await this.sourceAffiliateLinkModel.find({ 
+            ProductName: null,
+            MediaPath: {$ne: null},
+            my_new_link: {$ne: null},
+         }).limit(100);
         console.log(withoutNameList)
         if (withoutNameList.length == 0) {
             return;
@@ -157,6 +260,7 @@ export class CrawldataService {
         for (const item of withoutNameList) {
             if (item.my_new_link) {
                 await page.goto(item.source_link);
+                // return
 
                 await page.waitForSelector('div.container[role="main"] section section h1');
 
@@ -178,47 +282,39 @@ export class CrawldataService {
                 }
             }
         }
+
+        console.log('Done.')
     }
 
 
-    async updateMediaPath() { // Hàm này cập nhật đường dẫn media local cho sản phẩm
-        const affiliate_list = await this.sourceAffiliateLinkModel.find({ MediaPath: null }).limit(100);
+    async updateMediaToDrive() { // Hàm này cập nhật đường dẫn media local cho sản phẩm
+        const affiliate_list = await this.sourceAffiliateLinkModel.find({
+            url_link: null,
+            MediaPath: { $ne: null },
+            my_new_link: { $ne: null },
+            ProductName: { $ne: null },
+            SourceUrl: { $ne: null },
+        }).limit(1000);
         if (affiliate_list.length == 0) {
+            console.log('Nothing to upload')
             return;
         }
 
-        const MEDIA_FOLDER_PATH = this.configService.get('MEDIA_FOLDER_PATH');
-
         for (const item of affiliate_list) {
-            if (!item.SourceUrl) {
-                console.error(`[SourceUrl not found] Không thể lấy media cho ${item.SourceUrl} - ${item.ProductName}`)
-                continue;
-            }
-            const url = item.SourceUrl;
-            // const id = url.match(/\d+/)[0];
-            const match = url.match(/reel\/(\d+)/);
-            const id = match ? match[1] : null;
-
-            if (!id) {
-                console.error(`[ID not found] Không thể lấy media cho ${item.SourceUrl} - ${item.ProductName}`)
-                continue;
-            }
-
-            const folderPath = MEDIA_FOLDER_PATH + item.Author;
-            const mediaPath = searchFilesInFolder(folderPath, id)
-            if (mediaPath) {
-                item.MediaPath = mediaPath;
-
-                const file_info = await this.driveService.uploadFile(mediaPath, "1xElKN_uhzxFBlkeFOGPv_Gw7cZwfoKf_");
+            try {
+                const file_info = await this.driveService.uploadFile(item.MediaPath, "1xElKN_uhzxFBlkeFOGPv_Gw7cZwfoKf_");
                 console.log("file_info: ", file_info);
                 const { id, name } = file_info;
                 item.url_link = `https://drive.google.com/uc?id=${id}&export=download`;
                 await item.save();
-                console.log({ mediaPath })
-            } else {
-                console.log(`[File not found] Không thể lấy media cho ${item.SourceUrl} - ${item.ProductName}`)
+                console.log({ mediaPath: item.MediaPath })
+            } catch (error) {
+                console.error(`Không thể lấy upload drive cho ${item.SourceUrl} - ${item.ProductName}`)
+                console.error(error);
             }
         }
+
+        console.log('Done.')
     }
 
 

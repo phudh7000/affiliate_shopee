@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { google } from 'googleapis';
-import mime from 'mime-types';
-import path from 'path';
+import * as mime from 'mime-types';
+import * as path from 'path';
 import * as fs from 'fs';
 import { ConfigService } from '@nestjs/config';
 
